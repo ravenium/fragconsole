@@ -1,0 +1,12 @@
+version '3'
+
+services:
+ fragrelay:
+  image: fragrelay:latest
+  ports:
+   - "8080:8080"
+   - "1935/udp:1935/udp"
+  volumes:
+      - ./config.toml:/conf/config.toml
+      - ./logs:/logs
+      - ./rec:/rec
