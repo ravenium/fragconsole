@@ -39,12 +39,12 @@ func showVideoList(w http.ResponseWriter, req *http.Request) {
 	var videoblock string
 	for i := range streams {
 
-		videoblock += streams[i].Name + ` <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-	<BR>
+		videoblock += ` <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+	<BR>` + streams[i].Name + `<BR>
 	<video id="video` + strconv.Itoa(i) + `"></video>
 	<script>
 	  var video = document.getElementById('video` + strconv.Itoa(i) + `');
-	  var videoSrc = 'videos/` + streams[i].Name + `.m3u8';
+	  var videoSrc = '/` + streams[i].Name + `.m3u8';
 	  if (video.canPlayType('application/vnd.apple.mpegurl')) {
 		video.src = videoSrc;
 	  } else if (Hls.isSupported()) {
@@ -53,6 +53,7 @@ func showVideoList(w http.ResponseWriter, req *http.Request) {
 		hls.attachMedia(video);
 	  }
 	</script>
+	<P>
 	`
 	}
 	fmt.Fprintf(w, videoblock)
@@ -90,16 +91,6 @@ func monitorStreams() {
 		log.Fatal("Cannot find ffmpeg!")
 	}
 
-	// clear previous recordings from streaming dir
-	os.RemoveAll("videos")
-
-	if _, err := os.Stat("videos"); os.IsNotExist(err) {
-		os.Mkdir("videos", 0755)
-	}
-	if _, err := os.Stat(recordingDir); os.IsNotExist(err) {
-		os.Mkdir(recordingDir, 0755)
-	}
-
 	// Poll every interval and launch/kill procs
 	for {
 
@@ -131,7 +122,7 @@ func monitorStreams() {
 		// assemble list of streams
 		json.Unmarshal(body, &streams)
 
-		fmt.Printf("There are %d streams!\n", len(streams))
+		fmt.Printf("Current live streams: %d \n", len(streams))
 
 		//start new streams
 		for i := 0; i < len(streams); i++ {
@@ -139,18 +130,15 @@ func monitorStreams() {
 				log.Println("New Stream found!", streams[i].Name)
 				proctracker[streams[i].Name] = true
 				if streamingMode {
-					log.Println("Starting restream job for ", streams[i].Name)
+					log.Println("Starting restream job for", streams[i].Name)
 					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-profile:v", "main", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments", ("videos/" + streams[i].Name + ".m3u8"))
 					sprocesses[streams[i].Name].Start()
 				}
 				if recordingMode {
-					log.Println("Starting recording job for ", streams[i].Name)
+					log.Println("Starting recording job for", streams[i].Name)
 					t := time.Now().Format("20060102150405")
 					rprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "copy", "-c:a", "copy", (recordingDir + "/" + streams[i].Name + "_" + t + ".mp4"))
-					log.Println(rprocesses[streams[i].Name].Args)
-					//rprocesses[streams[i].Name].Stderr = os.Stderr
-					//rprocesses[streams[i].Name].Stdout = os.Stdout
-					rprocesses[streams[i].Name].Run()
+					rprocesses[streams[i].Name].Start()
 
 				}
 			}
@@ -185,13 +173,24 @@ func main() {
 	flag.IntVar(&pollInterval, "poll", 10, "Interval in seconds to poll for new SRT feeds.")
 	flag.Parse()
 
+	//clear previous recordings from streaming dir
+	os.RemoveAll("videos")
+
+	if _, err := os.Stat("videos"); os.IsNotExist(err) {
+		os.Mkdir("videos", 0755)
+	}
+	if _, err := os.Stat(recordingDir); os.IsNotExist(err) {
+		os.Mkdir(recordingDir, 0755)
+	}
+
 	go monitorStreams()
 	// Configure and launch http server
 	fs := http.FileServer(http.Dir("./videos"))
-	http.Handle("/videos", fs)
+	http.Handle("/", fs)
 	http.HandleFunc("/monitor", showVideoList)
+	log.Println("Starting Monitor web server at", listenAddr)
 	err := http.ListenAndServe(listenAddr, nil)
 	if err != nil {
-		fmt.Println("Error!")
+		log.Fatalln("Error starting Web Server: ", err.Error())
 	}
 }
