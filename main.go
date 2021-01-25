@@ -93,6 +93,8 @@ func monitorStreams() {
 
 	// Poll every interval and launch/kill procs
 	for {
+		//sleep first so we can use this in continues
+		time.Sleep(time.Duration(pollInterval) * time.Second)
 
 		streamClient := http.Client{
 			Timeout: time.Second * 2,
@@ -100,14 +102,16 @@ func monitorStreams() {
 
 		req, err := http.NewRequest(http.MethodGet, srtStatusURL, nil)
 		if err != nil {
-			log.Fatal("Cannot load SRT status URL: ", err)
+			log.Println("Cannot load SRT status URL: ", err)
+			continue
 		}
 
 		req.Header.Set("User-Agent", "fragconsole-agent")
 		res, getErr := streamClient.Do(req)
 
 		if getErr != nil {
-			log.Fatal(getErr)
+			log.Println("Cannot GET SRT status URL: ", getErr)
+			continue
 		}
 
 		if res.Body != nil {
@@ -132,13 +136,14 @@ func monitorStreams() {
 				if streamingMode {
 					log.Println("Starting restream job for", streams[i].Name)
 					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-profile:v", "main", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments", ("videos/" + streams[i].Name + ".m3u8"))
-					sprocesses[streams[i].Name].Start()
+					// Using Combinedoutput vs Start prevents defunct processes
+					sprocesses[streams[i].Name].CombinedOutput()
 				}
 				if recordingMode {
 					log.Println("Starting recording job for", streams[i].Name)
 					t := time.Now().Format("20060102150405")
 					rprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "copy", "-c:a", "copy", (recordingDir + "/" + streams[i].Name + "_" + t + ".mp4"))
-					rprocesses[streams[i].Name].Start()
+					rprocesses[streams[i].Name].CombinedOutput()
 
 				}
 			}
@@ -158,14 +163,12 @@ func monitorStreams() {
 				}
 			}
 		}
-
-		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}
 }
 
 func main() {
 	flag.StringVar(&srtStatusURL, "serverurl", "http://localhost:8080/streams", "URL of host running SRT status json endpoint")
-	flag.StringVar(&srtStreamURL, "streamurl", "http://localhost:1935", "IP/port of streaming server")
+	flag.StringVar(&srtStreamURL, "streamurl", "srt://localhost:1935", "IP/port of streaming server")
 	flag.StringVar(&listenAddr, "listen", "127.0.0.1:3000", "Listen address for stream viewer")
 	flag.BoolVar(&recordingMode, "r", false, "Record a copy of incoming streams.")
 	flag.BoolVar(&streamingMode, "s", false, "Stream a copy of incoming streams.")

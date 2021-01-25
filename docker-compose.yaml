@@ -1,12 +1,22 @@
-version '3'
-
+version: "3.9"
 services:
- fragrelay:
-  image: fragrelay:latest
-  ports:
-   - "8080:8080"
-   - "1935/udp:1935/udp"
-  volumes:
-      - ./config.toml:/conf/config.toml
-      - ./logs:/logs
-      - ./rec:/rec
+  srtrelay:
+    image: "srtrelay:latest"
+    ports:
+      - "1935:1935/udp"
+    command: -address 0.0.0.0:1935
+    networks:
+        - fragforce
+    #volumes:
+    #    - ./config.toml:/conf/config.toml
+  frag_restream_record:
+    image: "fragconsole:latest"
+    ports:
+        - "3000:3000"
+    command: -s -serverurl http://srtrelay:8080/streams -streamurl srt://srtrelay:1935 -listen 0.0.0.0:3000 -s
+    networks:
+        - fragforce
+    volumes:
+        - ./record:/record
+networks:
+  fragforce:
