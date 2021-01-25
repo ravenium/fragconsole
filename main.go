@@ -122,7 +122,7 @@ func monitorStreams() {
 		// assemble list of streams
 		json.Unmarshal(body, &streams)
 
-		fmt.Printf("Current live streams: %d \n", len(streams))
+		log.Printf("Current live streams: %d \n", len(streams))
 
 		//start new streams
 		for i := 0; i < len(streams); i++ {
