@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -32,17 +31,12 @@ type Stream []struct {
 // this will be our list of streams
 var streams Stream
 
-//list of ffmpeg strings we need
-var ffRecordString = []string{"-c:v", "copy", "-c:a", "copy"}
-var ffTranscodeString = []string{"-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-profile:v", "main", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments"}
-
-// inactive string for potential higher quality use latter
+// inactive string for potential higher quality use later
 //var ffBitcopyString = []string{"-c:v", "copy", "-c:a", "copy", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments"}
 
 func showVideoList(w http.ResponseWriter, req *http.Request) {
 
 	var videoblock string
-	fmt.Fprintf(w, "ACTIVE STREAMS:"+strconv.Itoa(len(streams)))
 	for i := range streams {
 
 		videoblock += streams[i].Name + ` <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -62,6 +56,7 @@ func showVideoList(w http.ResponseWriter, req *http.Request) {
 	`
 	}
 	fmt.Fprintf(w, videoblock)
+	fmt.Fprintf(w, "<P>ACTIVE STREAMS:"+strconv.Itoa(len(streams)))
 }
 
 // Find takes a slice and looks for an element in it. If found it will
@@ -145,14 +140,18 @@ func monitorStreams() {
 				proctracker[streams[i].Name] = true
 				if streamingMode {
 					log.Println("Starting restream job for ", streams[i].Name)
-					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), strings.Join(ffTranscodeString[:], " "), ("videos/" + streams[i].Name + ".m3u8"))
+					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-profile:v", "main", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments", ("videos/" + streams[i].Name + ".m3u8"))
 					sprocesses[streams[i].Name].Start()
 				}
 				if recordingMode {
 					log.Println("Starting recording job for ", streams[i].Name)
 					t := time.Now().Format("20060102150405")
-					rprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), strings.Join(ffRecordString[:], " "), (recordingDir + "/" + streams[i].Name + t + ".mp4"))
-					rprocesses[streams[i].Name].Start()
+					rprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "copy", "-c:a", "copy", (recordingDir + "/" + streams[i].Name + "_" + t + ".mp4"))
+					log.Println(rprocesses[streams[i].Name].Args)
+					//rprocesses[streams[i].Name].Stderr = os.Stderr
+					//rprocesses[streams[i].Name].Stdout = os.Stdout
+					rprocesses[streams[i].Name].Run()
+
 				}
 			}
 		}
