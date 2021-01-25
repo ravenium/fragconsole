@@ -40,8 +40,8 @@ func showVideoList(w http.ResponseWriter, req *http.Request) {
 	for i := range streams {
 
 		videoblock += ` <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-	<BR>` + streams[i].Name + `<BR>
-	<video id="video` + strconv.Itoa(i) + `"></video>
+	<BR> Stream Name: ` + streams[i].Name + `<BR>
+	<video id="video` + strconv.Itoa(i) + `" controls></video>
 	<script>
 	  var video = document.getElementById('video` + strconv.Itoa(i) + `');
 	  var videoSrc = '/` + streams[i].Name + `.m3u8';
@@ -179,17 +179,30 @@ func main() {
 	if _, err := os.Stat("videos"); os.IsNotExist(err) {
 		os.Mkdir("videos", 0755)
 	}
+
+	// throw in a blank file for the root video dir
+	file, err := os.Create("videos/index.html")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	file.Close()
+
 	if _, err := os.Stat(recordingDir); os.IsNotExist(err) {
 		os.Mkdir(recordingDir, 0755)
 	}
 
+	// Start thread for watching SRT server
 	go monitorStreams()
+
 	// Configure and launch http server
 	fs := http.FileServer(http.Dir("./videos"))
+	// Keeping videos dir served up as root.  If we want to have it as its own path, we should do:
+	// prefixHandler := http.StripPrefix("/videos/", fs
+	// http.Handle("/videos", prefixHandler)
 	http.Handle("/", fs)
 	http.HandleFunc("/monitor", showVideoList)
 	log.Println("Starting Monitor web server at", listenAddr)
-	err := http.ListenAndServe(listenAddr, nil)
+	err = http.ListenAndServe(listenAddr, nil)
 	if err != nil {
 		log.Fatalln("Error starting Web Server: ", err.Error())
 	}
