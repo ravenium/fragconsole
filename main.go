@@ -44,7 +44,7 @@ func showVideoList(w http.ResponseWriter, req *http.Request) {
 	<video id="video` + strconv.Itoa(i) + `" controls></video>
 	<script>
 	  var video = document.getElementById('video` + strconv.Itoa(i) + `');
-	  var videoSrc = '/` + streams[i].Name + `.m3u8';
+	  var videoSrc = '/` + streams[i].Name + `_srt.m3u8';
 	  if (video.canPlayType('application/vnd.apple.mpegurl')) {
 		video.src = videoSrc;
 	  } else if (Hls.isSupported()) {
@@ -135,15 +135,18 @@ func monitorStreams() {
 				proctracker[streams[i].Name] = true
 				if streamingMode {
 					log.Println("Starting restream job for", streams[i].Name)
-					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-profile:v", "main", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments", ("videos/" + streams[i].Name + ".m3u8"))
-					// Using Combinedoutput vs Start prevents defunct processes
-					sprocesses[streams[i].Name].CombinedOutput()
+					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments", ("videos/" + streams[i].Name + "_srt.m3u8"))
+					sprocesses[streams[i].Name].Start()
+					//Wait a second so we don't overload ffmpeg launch
+					time.Sleep(time.Second)
 				}
 				if recordingMode {
 					log.Println("Starting recording job for", streams[i].Name)
 					t := time.Now().Format("20060102150405")
 					rprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "copy", "-c:a", "copy", (recordingDir + "/" + streams[i].Name + "_" + t + ".mp4"))
-					rprocesses[streams[i].Name].CombinedOutput()
+					rprocesses[streams[i].Name].Start()
+					//Wait a second so we don't overload ffmpeg launch
+					time.Sleep(time.Second)
 
 				}
 			}
@@ -155,10 +158,12 @@ func monitorStreams() {
 				delete(proctracker, j)
 				if streamingMode {
 					sprocesses[j].Process.Kill()
+					sprocesses[j].Process.Wait()
 					delete(sprocesses, j)
 				}
 				if recordingMode {
 					rprocesses[j].Process.Kill()
+					rprocesses[j].Process.Wait()
 					delete(rprocesses, j)
 				}
 			}
