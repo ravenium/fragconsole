@@ -18,6 +18,7 @@ var recordingMode bool
 var streamingMode bool
 var srtStatusURL string
 var srtStreamURL string
+var srtStreamPassword string
 var listenAddr string
 var pollInterval int
 
@@ -135,7 +136,7 @@ func monitorStreams() {
 				proctracker[streams[i].Name] = true
 				if streamingMode {
 					log.Println("Starting restream job for", streams[i].Name)
-					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments", ("videos/" + streams[i].Name + "_srt.m3u8"))
+					sprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name + srtStreamPassword), "-c:v", "libx264", "-x264opts", "keyint=1:no-scenecut", "-s", "640x360", "-r", "30", "-b:v", "900k", "-c:a", "aac", "-sws_flags", "bicubic", "-hls_time", "1", "-hls_list_size", "60", "-hls_delete_threshold", "15", "-hls_flags", "delete_segments", ("videos/" + streams[i].Name + "_srt.m3u8"))
 					sprocesses[streams[i].Name].Start()
 					//Wait a second so we don't overload ffmpeg launch
 					time.Sleep(time.Second)
@@ -143,7 +144,7 @@ func monitorStreams() {
 				if recordingMode {
 					log.Println("Starting recording job for", streams[i].Name)
 					t := time.Now().Format("20060102150405")
-					rprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name), "-c:v", "copy", "-c:a", "copy", (recordingDir + "/" + streams[i].Name + "_" + t + ".mp4"))
+					rprocesses[streams[i].Name] = exec.Command(ffmpegPath, "-y", "-i", (srtStreamURL + "?streamid=play/" + streams[i].Name + srtStreamPassword), "-c:v", "copy", "-c:a", "copy", (recordingDir + "/" + streams[i].Name + "_" + t + ".mp4"))
 					rprocesses[streams[i].Name].Start()
 					//Wait a second so we don't overload ffmpeg launch
 					time.Sleep(time.Second)
@@ -174,12 +175,18 @@ func monitorStreams() {
 func main() {
 	flag.StringVar(&srtStatusURL, "serverurl", "http://localhost:8080/streams", "URL of host running SRT status json endpoint")
 	flag.StringVar(&srtStreamURL, "streamurl", "srt://localhost:1935", "IP/port of streaming server")
+	flag.StringVar(&srtStreamPassword, "playpassword", "", "Password to play srt streams from srtrelay (optional)")
 	flag.StringVar(&listenAddr, "listen", "127.0.0.1:3000", "Listen address for stream viewer")
 	flag.BoolVar(&recordingMode, "r", false, "Record a copy of incoming streams.")
 	flag.BoolVar(&streamingMode, "s", false, "Stream a copy of incoming streams.")
 	flag.StringVar(&recordingDir, "recpath", "record", "path for recordings (omit trailling slashes)")
 	flag.IntVar(&pollInterval, "poll", 10, "Interval in seconds to poll for new SRT feeds.")
 	flag.Parse()
+
+	// if we have set a stream passsword, tack it on to the end of the ffmpeg strings above to properly ingest
+	if srtStreamPassword != "" {
+		srtStreamPassword = "/" + srtStreamPassword
+	}
 
 	//clear previous recordings from streaming dir
 	os.RemoveAll("videos")
