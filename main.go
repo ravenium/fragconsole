@@ -171,19 +171,21 @@ func monitorStreams() {
 
 		for j := range proctracker {
 			if !findStream(streams, j) {
-				log.Println("Removing ffmpeg processes for", j)
 				delete(proctracker, j)
 				if streamingMode {
+					log.Println("Removing ffmpeg preview processes for", j)
 					sprocesses[j].Process.Kill()
 					sprocesses[j].Process.Wait()
 					delete(sprocesses, j)
 				}
 				if recordingMode {
+					log.Println("Removing ffmpeg record processes for", j)
 					rprocesses[j].Process.Kill()
 					rprocesses[j].Process.Wait()
 					delete(rprocesses, j)
 				}
 				if forwardMode {
+					log.Println("Removing relay processes for", j)
 					fprocesses[j].Process.Kill()
 					fprocesses[j].Process.Wait()
 					delete(fprocesses, j)
@@ -195,7 +197,7 @@ func monitorStreams() {
 
 func main() {
 	flag.StringVar(&srtStatusURL, "serverurl", "http://localhost:8080/streams", "URL of host running SRT status json endpoint")
-	flag.StringVar(&srtStreamURL, "streamurl", "srt://localhost:1935", "URL of streaming server")
+	flag.StringVar(&srtStreamURL, "streamurl", "srt://localhost:1935", "srt URL of streaming server")
 	flag.StringVar(&srtStreamPassword, "playpassword", "", "Password to play srt streams from srtrelay (optional)")
 	flag.StringVar(&listenAddr, "listen", "127.0.0.1:3000", "Listen address for stream viewer")
 	flag.BoolVar(&recordingMode, "r", false, "Record a copy of incoming streams.")
