@@ -81,7 +81,7 @@ Usage:
   - Bob sends his OBS stream to srt://alice-server:1935?streamid=publish/bob.
   - The SRT stream is ingested by Alice's srtrelay container.
   - Fragconsole polls the srtrelay API and notes there is a new stream available.  It launches two ffmpeg processes, one each to transcode the stream to HLS, and one to record to disk.
-  - Alice sees the stream in her web preview and adds it to her OBS:  srt://alice-server:1935?streamid=play/bob
+  - Alice sees the stream in her web preview (http://alice-server:3000/monitor) and adds it to her OBS:  srt://alice-server:1935?streamid=play/bob
   - There are now three "play" streams running: 2 for ffmpeg, one for alice, for one "publish" stream for bob.
 
 # Future Plans/TODO
