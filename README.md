@@ -10,7 +10,9 @@
 
 Fragconsole originated because of a need to visualize and preview streams in an [SRT](https://www.haivision.com/products/srt-secure-reliable-transport/) relay.  There are only a few open source solutions for SRT, and even fewer written that support multiple streamIDs on a single listening socket, are easy to use, and...well, are free.
 
-Most of the need comes from running streams on Twitch for [Extra-Life](https://www.extra-life.org). In this use case, multiple streamers stream via SRT into a relay, from which a main OBS instance can then pick and choose which stream to grab, format, and rebroadcast to Twitch (which is still RTMP-only for most).
+Most of the need comes from running streams on Twitch for [Extra-Life](https://www.extra-life.org). The most common use case for Twitch is a single streaming broadcasting to it, but what if you have over a dozen streamers spread throughout the world and all needing to broadcast to the same Twitch account?  How do you ensure that only the streamers you want are streaming when you want, that you can switch feeds at will without stopping the stream, or perhaps even composite multiple feeds (such as a 4 player game, or webcams)?
+
+In this use case, multiple streamers stream via SRT into a relay, from which a main OBS instance can then pick and choose which stream to grab, format, and rebroadcast to Twitch (which is still RTMP-only for most).
 
 
 # Quick start:
