@@ -4,7 +4,6 @@ services:
     image: "ravenium/srtrelay:latest"
     ports:
       - "1935:1935/udp"
-    command: -address 0.0.0.0:1935
     networks:
         - fragforce
     volumes:
