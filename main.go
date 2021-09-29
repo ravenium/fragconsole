@@ -32,7 +32,7 @@ type Stream []struct {
 	Created string `json:"created"`
 }
 
-// this will be our list of streams
+// streams - this will be our list of streams
 var streams Stream
 
 // inactive string for potential higher quality use later
