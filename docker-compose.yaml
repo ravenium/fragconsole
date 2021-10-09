@@ -12,7 +12,7 @@ services:
     image: "ravenium/fragconsole:latest"
     ports:
         - "3000:3000"
-    command: -s -serverurl http://srtrelay:8080/streams -streamurl srt://srtrelay:1935 -listen 0.0.0.0:3000 -s
+    command: -s -serverurl http://srtrelay:8080/streams -streamurl srt://srtrelay:1935 -listen 0.0.0.0:3000
     networks:
         - fragforce
     volumes:
