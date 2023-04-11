@@ -1,7 +1,7 @@
 FROM alpine:latest as build
 RUN apk update &&\
     apk upgrade &&\ 
-    apk add --no-cache linux-headers alpine-sdk cmake tcl openssl-dev zlib-dev yasm x264-dev x265-dev go libsrt-dev
+    apk add --no-cache linux-headers alpine-sdk cmake tcl openssl-dev zlib-dev yasm x264-dev x265-dev go libsrt-dev numactl-dev
 WORKDIR /tmp
 RUN git clone https://github.com/ravenium/fragconsole.git
 RUN git clone https://github.com/FFmpeg/FFmpeg.git
@@ -15,7 +15,7 @@ FROM alpine:latest
 ENV LD_LIBRARY_PATH /lib:/usr/lib:/usr/local/lib64
 RUN apk update &&\
     apk upgrade &&\
-    apk add --no-cache libstdc++ x264-libs x265-libs libsrt libsrt-progs &&\
+    apk add --no-cache libstdc++ x264-libs x265-libs libsrt libsrt-progs numactl &&\
     mkdir -p /conf /logs /record /opt/ffmpeg
 COPY --from=build /tmp/fragconsole/fragconsole /usr/local/bin/
 COPY --from=build /opt/ffmpeg/ /opt/ffmpeg/
